@@ -1,0 +1,11 @@
+{
+  "name": "hermanbergner-skills",
+  "owner": { "name": "Herman Bergner" },
+  "plugins": [
+    {
+      "name": "challenge-me",
+      "source": "./",
+      "description": "Pushes back and stress-tests your thinking"
+    }
+  ]
+}
