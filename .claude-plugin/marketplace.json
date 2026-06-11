@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "challenge-me",
-      "source": "./",
+      "source": "./skills/challenge-me",
       "description": "Pushes back and stress-tests your thinking"
     }
   ]
