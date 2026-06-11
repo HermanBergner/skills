@@ -1,0 +1,6 @@
+{ 
+  "name": "hermanbergner-skills",
+  "skills": [
+    "./skills/challenge-me"
+  ]
+}
