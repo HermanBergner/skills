@@ -3,9 +3,9 @@
   "owner": { "name": "Herman Bergner" },
   "plugins": [
     {
-      "name": "challenge-me",
-      "source": "./skills/challenge-me",
-      "description": "Pushes back and stress-tests your thinking"
+      "name": "bergner",
+      "source": ".",
+      "description": "Herman's personal collection of Claude Code skills."
     }
   ]
 }
