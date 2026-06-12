@@ -190,15 +190,15 @@ def _row_text(sk: Skill) -> Text:
 # --------------------------------------------------------------------------- #
 class SkillManager(App):
     CSS = """
-    Screen { background: #0A0B0D; color: #CBCFD6; }
-    Header { background: #101216; color: #F5F6F8; }
-    Footer { background: #060708; color: #8B909A; }
+    Screen { background: #101216; color: #CBCFD6; }
+    Header { background: #16191E; color: #F5F6F8; }
+    Footer { background: #0A0B0D; color: #8B909A; }
 
     #search {
         height: 3;
         margin: 1 1 0 1;
         border: round #262B33;
-        background: #101216;
+        background: #16191E;
         color: #CBCFD6;
     }
     #search:focus { border: round #2BD4E0; }
@@ -210,7 +210,7 @@ class SkillManager(App):
         margin: 1 0 1 1;
         padding: 0 1;
         border: round #262B33;
-        background: #101216;
+        background: #16191E;
     }
     #list:focus { border: round #2BD4E0; }
     OptionList > .option-list--option { padding: 0 1; color: #CBCFD6; }
@@ -222,9 +222,9 @@ class SkillManager(App):
         margin: 1 1 1 1;
         padding: 1 2;
         border: round #262B33;
-        background: #101216;
+        background: #16191E;
     }
-    #detail { background: #101216; color: #CBCFD6; }
+    #detail { background: #16191E; color: #CBCFD6; }
     """
 
     BINDINGS = [
