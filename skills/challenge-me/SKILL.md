@@ -1,6 +1,7 @@
 ---
 name: challenge-me
 description: Aggressively interview the user one question at a time to surface the design tree behind a planned feature or project before building. Use when the user says "I want to build", "help me design", "I have an idea for", or pitches something still fuzzy — even if they sound confident. Not for executing an agreed design or debugging.
+version: 1.0.0
 ---
 
 # Challenge Me
