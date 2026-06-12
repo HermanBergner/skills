@@ -3,7 +3,7 @@
 # requires-python = ">=3.10"
 # dependencies = ["textual>=0.60"]
 # ///
-"""Bergner Skills — a Mason/Lazy-style TUI to install, update, and uninstall
+"""Bergner Skills — a keyboard-driven TUI to install, update, and uninstall
 Claude Code *personal* skills.
 
 Skills live in this repo under ``skills/<name>/`` and are installed by copying
@@ -24,8 +24,9 @@ from pathlib import Path
 from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical
-from textual.widgets import DataTable, Footer, Header, Static
+from textual.containers import Horizontal, VerticalScroll
+from textual.widgets import Footer, Header, Input, OptionList, Static
+from textual.widgets.option_list import Option
 
 REPO_ROOT = Path(__file__).resolve().parent
 REPO_SKILLS = REPO_ROOT / "skills"
@@ -45,11 +46,7 @@ def skills_dir() -> Path:
 
 
 def parse_frontmatter(path: Path) -> dict[str, str]:
-    """Read the leading ``---`` fenced frontmatter as flat ``key: value`` pairs.
-
-    Frontmatter here is simple scalars (name/description/version), so we avoid a
-    YAML dependency and split each line on its first colon.
-    """
+    """Read the leading ``---`` fenced frontmatter as flat ``key: value`` pairs."""
     try:
         text = path.read_text(encoding="utf-8")
     except OSError:
@@ -84,13 +81,6 @@ NOT_INSTALLED = "not_installed"
 UP_TO_DATE = "up_to_date"
 UPDATE_AVAILABLE = "update_available"
 INSTALLED_UNKNOWN = "installed_unknown"  # installed, but version missing/unparseable
-
-_STATUS_DISPLAY = {
-    NOT_INSTALLED: ("○", "not installed", "dim"),
-    UP_TO_DATE: ("●", "installed", "green"),
-    UPDATE_AVAILABLE: ("↑", "update", "yellow"),
-    INSTALLED_UNKNOWN: ("↑", "update", "yellow"),
-}
 
 
 @dataclass
@@ -160,20 +150,39 @@ def do_uninstall(skill: Skill) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Cell renderers
+# Palette (lifted from bergner-service-todo-app design tokens) + renderers
 # --------------------------------------------------------------------------- #
-def _status_cell(sk: Skill) -> Text:
-    icon, label, style = _STATUS_DISPLAY[sk.status]
-    return Text(f"{icon} {label}", style=style)
+C_NAME = "#F5F6F8"     # text-strong
+C_BODY = "#CBCFD6"     # text-default
+C_DIM = "#8B909A"      # text-muted
+C_OFF = "#5B606B"      # text-faint
+C_OK = "#74D3A2"       # success-text
+C_UPDATE = "#ECBC77"   # warning-text
+
+_ICON = {
+    NOT_INSTALLED: ("○", C_OFF),
+    UP_TO_DATE: ("●", C_OK),
+    UPDATE_AVAILABLE: ("↑", C_UPDATE),
+    INSTALLED_UNKNOWN: ("↑", C_UPDATE),
+}
 
 
-def _installed_cell(sk: Skill) -> Text:
-    return Text(sk.installed_version or "—", style="" if sk.installed_version else "dim")
+def _state_label(sk: Skill) -> str:
+    if not sk.installed:
+        return "not installed"
+    if sk.updatable:
+        return f"update → {sk.repo_version}"
+    return f"installed {sk.installed_version}"
 
 
-def _short(s: str, n: int = 64) -> str:
-    s = " ".join(s.split())
-    return s if len(s) <= n else s[: n - 1] + "…"
+def _row_text(sk: Skill) -> Text:
+    icon, color = _ICON[sk.status]
+    t = Text(no_wrap=True, overflow="ellipsis")
+    t.append(f"{icon} ", style=color)
+    t.append(f"{sk.name[:24]:<24} ", style=f"bold {C_NAME}" if sk.installed else C_BODY)
+    t.append(f"{sk.repo_version:<7} ", style=C_DIM)
+    t.append(_state_label(sk), style=color)
+    return t
 
 
 # --------------------------------------------------------------------------- #
@@ -181,108 +190,150 @@ def _short(s: str, n: int = 64) -> str:
 # --------------------------------------------------------------------------- #
 class SkillManager(App):
     CSS = """
-    Screen { background: $surface; }
-    #table { height: 1fr; }
-    #detail {
-        height: auto;
-        min-height: 4;
-        padding: 1 2;
-        border-top: solid $primary;
-        background: $panel;
+    Screen { background: #0A0B0D; color: #CBCFD6; }
+    Header { background: #101216; color: #F5F6F8; }
+    Footer { background: #060708; color: #8B909A; }
+
+    #search {
+        height: 3;
+        margin: 1 1 0 1;
+        border: round #262B33;
+        background: #101216;
+        color: #CBCFD6;
     }
+    #search:focus { border: round #2BD4E0; }
+
+    #body { height: 1fr; }
+
+    #list {
+        width: 2fr;
+        margin: 1 0 1 1;
+        padding: 0 1;
+        border: round #262B33;
+        background: #101216;
+    }
+    #list:focus { border: round #2BD4E0; }
+    OptionList > .option-list--option { padding: 0 1; color: #CBCFD6; }
+    OptionList > .option-list--option-highlighted { background: #1D2127; }
+    #list:focus > .option-list--option-highlighted { background: #13343A; color: #F5F6F8; }
+
+    #detailbox {
+        width: 3fr;
+        margin: 1 1 1 1;
+        padding: 1 2;
+        border: round #262B33;
+        background: #101216;
+    }
+    #detail { background: #101216; color: #CBCFD6; }
     """
 
     BINDINGS = [
-        Binding("space", "toggle", "install/remove"),
+        Binding("slash", "focus_search", "search"),
+        Binding("space,enter", "toggle", "install/remove"),
         Binding("u", "update", "update"),
         Binding("a", "sync_all", "sync all"),
-        Binding("x,d", "uninstall", "uninstall"),
+        Binding("x", "uninstall", "uninstall"),
         Binding("r", "refresh", "refresh"),
         Binding("q", "quit", "quit"),
         Binding("j", "cursor_down", "down", show=False),
         Binding("k", "cursor_up", "up", show=False),
+        Binding("escape", "blur_search", "to list", show=False),
     ]
 
     def compose(self) -> ComposeResult:
-        yield Header()
-        with Vertical():
-            yield DataTable(id="table", cursor_type="row", zebra_stripes=True)
-            yield Static("", id="detail")
+        yield Header(show_clock=False)
+        yield Input(placeholder="type to filter…", id="search")
+        with Horizontal(id="body"):
+            yield OptionList(id="list")
+            with VerticalScroll(id="detailbox"):
+                yield Static("", id="detail")
         yield Footer()
 
     def on_mount(self) -> None:
         self.title = "Bergner Skills"
         self.sub_title = str(skills_dir())
-        self.table: DataTable = self.query_one("#table", DataTable)
+        self.list: OptionList = self.query_one("#list", OptionList)
         self.detail: Static = self.query_one("#detail", Static)
-        self.table.add_column("", key="status", width=16)
-        self.table.add_column("Skill", key="name", width=20)
-        self.table.add_column("Repo", key="repo", width=8)
-        self.table.add_column("Installed", key="installed", width=10)
-        self.table.add_column("Description", key="desc")
+        self.query_one("#search", Input).border_title = "Search"
+        self.list.border_title = "Skills"
+        self.query_one("#detailbox", VerticalScroll).border_title = "Details"
         self.skills: list[Skill] = []
-        self._populate()
-        self.table.focus()
+        self.filtered: list[Skill] = []
+        self._reload()
+        self.list.focus()
 
     # -- data --------------------------------------------------------------- #
-    def _populate(self) -> None:
-        self.skills = discover()
-        self.table.clear()
-        for sk in self.skills:
-            self.table.add_row(
-                _status_cell(sk), sk.name, sk.repo_version,
-                _installed_cell(sk), _short(sk.description), key=sk.dirname,
-            )
-        if not self.skills:
-            self.detail.update(Text("No skills found under skills/ in this repo.", style="dim"))
+    def _query(self) -> str:
+        return self.query_one("#search", Input).value.strip().lower()
+
+    def _refilter(self) -> None:
+        q = self._query()
+        prev = self.list.highlighted or 0
+        self.filtered = [
+            s for s in self.skills
+            if not q or q in s.name.lower() or q in s.description.lower()
+        ]
+        self.list.clear_options()
+        for sk in self.filtered:
+            self.list.add_option(Option(_row_text(sk), id=sk.dirname))
+        if self.filtered:
+            self.list.highlighted = min(prev, len(self.filtered) - 1)
         self._update_detail()
 
     def _reload(self) -> None:
-        """Re-scan disk and refresh status cells in place, preserving the cursor."""
-        cursor = self.table.cursor_row
+        """Re-scan disk, then re-apply the current search filter."""
         self.skills = discover()
-        for sk in self.skills:
-            self.table.update_cell(sk.dirname, "status", _status_cell(sk))
-            self.table.update_cell(sk.dirname, "installed", _installed_cell(sk))
-        if cursor is not None and self.table.row_count:
-            self.table.move_cursor(row=min(cursor, self.table.row_count - 1))
-        self._update_detail()
+        self._refilter()
 
     def _current(self) -> Skill | None:
-        i = self.table.cursor_row
-        if i is None or not (0 <= i < len(self.skills)):
+        i = self.list.highlighted
+        if i is None or not (0 <= i < len(self.filtered)):
             return None
-        return self.skills[i]
+        return self.filtered[i]
 
     def _update_detail(self) -> None:
         sk = self._current()
         if sk is None:
+            self.detail.update(Text("No matching skill.", style=C_DIM))
             return
+        icon, color = _ICON[sk.status]
         body = Text()
-        body.append(sk.name, style="bold")
-        body.append(f"   repo {sk.repo_version}", style="dim")
-        if sk.installed:
-            body.append(f"  ·  installed {sk.installed_version or '?'}", style="dim")
-        body.append("\n")
-        body.append(sk.description or "(no description)")
+        body.append(f"{icon} {sk.name}\n", style=f"bold {C_NAME}")
+        body.append(f"repo {sk.repo_version}", style=C_DIM)
+        body.append(
+            f"   ·   {_state_label(sk)}\n\n",
+            style=color if sk.installed else C_DIM,
+        )
+        body.append(sk.description or "(no description)", style=C_BODY)
         self.detail.update(body)
 
     # -- events ------------------------------------------------------------- #
-    def on_data_table_row_highlighted(self, _event: DataTable.RowHighlighted) -> None:
+    def on_option_list_option_highlighted(self, _e: OptionList.OptionHighlighted) -> None:
         self._update_detail()
 
-    def on_data_table_row_selected(self, _event: DataTable.RowSelected) -> None:
-        # Enter selects a row -> treat as toggle.
-        self.action_toggle()
+    def on_option_list_option_selected(self, _e: OptionList.OptionSelected) -> None:
+        self.action_toggle()  # Enter / click-equivalent
 
-    # -- navigation --------------------------------------------------------- #
+    def on_input_changed(self, _e: Input.Changed) -> None:
+        self._refilter()
+
+    def on_input_submitted(self, _e: Input.Submitted) -> None:
+        self.list.focus()
+
+    # -- navigation / focus ------------------------------------------------- #
+    def action_focus_search(self) -> None:
+        self.query_one("#search", Input).focus()
+
+    def action_blur_search(self) -> None:
+        self.list.focus()
+
     def action_cursor_down(self) -> None:
-        if self.table.row_count:
-            self.table.move_cursor(row=min(self.table.cursor_row + 1, self.table.row_count - 1))
+        if self.list.option_count:
+            self.list.action_cursor_down()
 
     def action_cursor_up(self) -> None:
-        if self.table.row_count:
-            self.table.move_cursor(row=max(self.table.cursor_row - 1, 0))
+        if self.list.option_count:
+            self.list.action_cursor_up()
 
     # -- actions ------------------------------------------------------------ #
     def _apply(self, fn, sk: Skill, msg: str) -> None:

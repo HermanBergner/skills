@@ -32,10 +32,11 @@ them up automatically.
 | key | action |
 |-----|--------|
 | `↑`/`↓` or `j`/`k` | move |
+| `/` | jump to the search filter (`esc` returns to the list) |
 | `space` / `enter` | install ⇄ uninstall the highlighted skill |
 | `u` | update the highlighted skill (when an update is available) |
 | `a` | sync all — install everything missing + update everything outdated |
-| `x` / `d` | uninstall the highlighted skill |
+| `x` | uninstall the highlighted skill |
 | `r` | refresh from disk |
 | `q` | quit |
 
