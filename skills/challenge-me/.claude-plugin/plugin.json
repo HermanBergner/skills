@@ -1,0 +1,6 @@
+{
+  "name": "challenge-me",
+  "version": "1.0.0",
+  "description": "Aggressively interviews you one question at a time to surface the design tree behind a planned feature or project before building.",
+  "author": { "name": "Herman Bergner" }
+}
