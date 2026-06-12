@@ -152,18 +152,18 @@ def do_uninstall(skill: Skill) -> None:
 # --------------------------------------------------------------------------- #
 # Palette (lifted from bergner-service-todo-app design tokens) + renderers
 # --------------------------------------------------------------------------- #
+# Near-monochrome: greys do the work, one purple accent marks actionable state.
 C_NAME = "#F5F6F8"     # text-strong
 C_BODY = "#CBCFD6"     # text-default
 C_DIM = "#8B909A"      # text-muted
 C_OFF = "#5B606B"      # text-faint
-C_OK = "#74D3A2"       # success-text
-C_UPDATE = "#ECBC77"   # warning-text
+C_ACCENT = "#9B6BF2"   # the one accent — purple (splash-violet)
 
 _ICON = {
     NOT_INSTALLED: ("○", C_OFF),
-    UP_TO_DATE: ("●", C_OK),
-    UPDATE_AVAILABLE: ("↑", C_UPDATE),
-    INSTALLED_UNKNOWN: ("↑", C_UPDATE),
+    UP_TO_DATE: ("●", C_BODY),       # installed — neutral, no green
+    UPDATE_AVAILABLE: ("↑", C_ACCENT),  # actionable — purple
+    INSTALLED_UNKNOWN: ("↑", C_ACCENT),
 }
 
 
@@ -201,7 +201,7 @@ class SkillManager(App):
         background: #16191E;
         color: #CBCFD6;
     }
-    #search:focus { border: round #2BD4E0; }
+    #search:focus { border: round #9B6BF2; }
 
     #body { height: 1fr; }
 
@@ -212,10 +212,10 @@ class SkillManager(App):
         border: round #262B33;
         background: #16191E;
     }
-    #list:focus { border: round #2BD4E0; }
+    #list:focus { border: round #9B6BF2; }
     OptionList > .option-list--option { padding: 0 1; color: #CBCFD6; }
     OptionList > .option-list--option-highlighted { background: #1D2127; }
-    #list:focus > .option-list--option-highlighted { background: #13343A; color: #F5F6F8; }
+    #list:focus > .option-list--option-highlighted { background: #221C30; color: #F5F6F8; }
 
     #detailbox {
         width: 3fr;
